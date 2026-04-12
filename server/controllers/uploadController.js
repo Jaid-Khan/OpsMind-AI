@@ -2,8 +2,7 @@ const fs = require("fs");
 const pdfParse = require("pdf-parse");
 const { chunkText } = require("../utils/chunker");
 const Document = require("../models/documentModel");
-// console.log(typeof pdfParse)
-
+const { generateEmbedding } = require("../services/embeddingService");
 
 const uploadPDF = async (req, res) => {
   try {
@@ -20,16 +19,23 @@ const uploadPDF = async (req, res) => {
 
     const chunks = chunkText(text);
 
-    const docs = chunks.map(chunk => ({
-      fileName: req.file.originalname,
-      chunkText: chunk,
-      embedding: []
-    }));
+    const docs = [];
+
+    for (let chunk of chunks) {
+      const embedding = await generateEmbedding(chunk);
+    //   console.log("Embedding result:", embedding);
+
+      docs.push({
+        fileName: req.file.originalname,
+        chunkText: chunk,
+        embedding: embedding
+      });
+    }
 
     await Document.insertMany(docs);
 
     res.status(200).json({
-      message: "PDF processed & stored",
+      message: "PDF processed & stored with embeddings",
       totalChunks: chunks.length
     });
 
