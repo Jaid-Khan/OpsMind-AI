@@ -1,11 +1,23 @@
-// Using MOCK Embeddings 
+// Using Free Embeddings For Continue Project Developement Which Works Offline Only
+const { pipeline } = require("@xenova/transformers");
+
+let extractor;
+
+const loadModel = async () => {
+  if (!extractor) {
+    extractor = await pipeline("feature-extraction", "Xenova/all-MiniLM-L6-v2");
+  }
+};
 
 const generateEmbedding = async (text) => {
   try {
-    // 🔥 Fake embedding (random vector)
-    const vector = Array.from({ length: 384 }, () => Math.random());
+    if (!text || text.trim().length === 0) return [];
 
-    return vector;
+    await loadModel();
+
+    const output = await extractor(text, { pooling: "mean", normalize: true });
+
+    return Array.from(output.data);
 
   } catch (error) {
     console.error("Embedding error:", error.message);
@@ -14,6 +26,23 @@ const generateEmbedding = async (text) => {
 };
 
 module.exports = { generateEmbedding };
+
+
+// Using MOCK Embeddings 
+// const generateEmbedding = async (text) => {
+//   try {
+//     // 🔥 Fake embedding (random vector)
+//     const vector = Array.from({ length: 384 }, () => Math.random());
+
+//     return vector;
+
+//   } catch (error) {
+//     console.error("Embedding error:", error.message);
+//     return [];
+//   }
+// };
+
+// module.exports = { generateEmbedding };
 
 
 // Gemini Api Embedding 
