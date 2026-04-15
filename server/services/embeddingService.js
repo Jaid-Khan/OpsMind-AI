@@ -16,18 +16,26 @@ const generateEmbedding = async (text) => {
 module.exports = { generateEmbedding };
 
 
-// Gemini Api Embedding Not Working
+// Gemini Api Embedding 
 // const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 // const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
+// const model = genAI.getGenerativeModel({
+//   model: "embedding-001"
+// });
+
 // const generateEmbedding = async (text) => {
 //   try {
-//     const model = genAI.getGenerativeModel({
-//       model: "text-embedding-004"
-//     });
+//     if (!text || text.trim().length === 0) {
+//       return [];
+//     }
 
-//     const result = await model.embedContent(text);
+//     const result = await model.embedContent({
+//       content: {
+//         parts: [{ text }]
+//       }
+//     });
 
 //     return result.embedding.values;
 
@@ -38,8 +46,6 @@ module.exports = { generateEmbedding };
 // };
 
 // module.exports = { generateEmbedding };
-
-
 
 
 
