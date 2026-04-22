@@ -1,6 +1,6 @@
 const Document = require("../models/documentModel");
 const { generateEmbedding } = require("../services/embeddingService");
-const { simpleAnswer } = require("../services/fallbackService");
+const { generateAnswer } = require("../services/grokService");
 
 // 🔥 Cosine Similarity
 const cosineSimilarity = (a, b) => {
@@ -51,8 +51,8 @@ exports.queryDocs = async (req, res) => {
     // 5️⃣ Create context
     const context = topDocs.map(d => d.text).join("\n\n");
 
-    // 🔥 6️⃣ Smart fallback answer
-    const answer = simpleAnswer(context, query);
+    // 🔥 6️⃣ LLM Answer (Groq)
+    const answer = await generateAnswer(context, query);
 
     // 7️⃣ Response
     res.json({
