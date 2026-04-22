@@ -12,7 +12,7 @@ export default function Message({ msg }) {
           : "bg-white text-gray-800 rounded-bl-none border border-gray-200"
         }
       `}>
-        <div className="whitespace-pre-wrap break-words">
+        <div className="whitespace-pre-wrap wrap-break-word">
           {msg.text}
         </div>
       </div>
