@@ -1,11 +1,21 @@
+const cleanText = (text) => {
+  return text
+    .replace(/\n+/g, " ")
+    .replace(/||||||||易||/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+};
+
 exports.chunkText = (text) => {
-  const chunkSize = 500; // characters
-  const overlap = 100;
+  const cleaned = cleanText(text);
+
+  const chunkSize = 1000;
+  const overlap = 150;
 
   let chunks = [];
 
-  for (let i = 0; i < text.length; i += (chunkSize - overlap)) {
-    const chunk = text.slice(i, i + chunkSize);
+  for (let i = 0; i < cleaned.length; i += (chunkSize - overlap)) {
+    const chunk = cleaned.slice(i, i + chunkSize);
     chunks.push(chunk);
   }
 
