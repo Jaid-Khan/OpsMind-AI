@@ -21,10 +21,6 @@ app.use("/api/query", queryRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/upload", uploadRoutes); 
 
-app.use("/api", uploadRoutes);
-app.use("/api/query", queryRoutes);
-app.use("/api/admin", adminRoutes);
-
 // ✅ ALWAYS LAST
 app.use((err, req, res, next) => {
   if (err instanceof require("multer").MulterError) {

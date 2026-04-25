@@ -63,3 +63,27 @@ FINAL ANSWER:
 };
 
 module.exports = { generateAnswerStream };
+
+const generateAnswer = async (context, query) => {
+  try {
+    let fullResponse = "";
+
+    // Fake response object to capture stream
+    const fakeRes = {
+      write: (chunk) => {
+        fullResponse += chunk;
+      },
+      end: () => {},
+    };
+
+    await generateAnswerStream(context, query, fakeRes);
+
+    return fullResponse;
+
+  } catch (error) {
+    console.error("Generate Answer Error:", error);
+    return "Error generating response";
+  }
+};
+
+module.exports = { generateAnswerStream, generateAnswer };

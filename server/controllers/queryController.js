@@ -1,6 +1,6 @@
 const Document = require("../models/documentModel");
 const { generateEmbedding } = require("../services/embeddingService");
-const { generateAnswerStream } = require("../services/grokService");
+const { generateAnswer } = require("../services/grokService");
 
 exports.queryDocs = async (req, res) => {
   try {
@@ -10,57 +10,64 @@ exports.queryDocs = async (req, res) => {
       return res.status(400).json({ error: "Query is required" });
     }
 
-    // 🔥 Streaming headers
-    res.setHeader("Content-Type", "text/plain; charset=utf-8");
-    res.setHeader("Transfer-Encoding", "chunked");
-
-    // 🔥 Improve query for better embedding
+    // 🔥 Improve query
     const improvedQuery = `Explain clearly: ${query}`;
 
     // 1️⃣ Generate embedding
     const queryEmbedding = await generateEmbedding(improvedQuery);
 
-    // 2️⃣ Vector search with score
-    const results = await Document.aggregate([
-      {
-        $vectorSearch: {
-          index: "default",
-          path: "embedding",
-          queryVector: queryEmbedding,
-          numCandidates: 200,
-          limit: 10,
-        },
-      },
-      {
-        $addFields: {
-          score: { $meta: "vectorSearchScore" },
-        },
-      },
-    ]);
+    // 2️⃣ Vector search
+const results = await Document.aggregate([
+  {
+    $vectorSearch: {
+      index: "vector_index", // ✅ FIXED
+      path: "embedding",
+      queryVector: queryEmbedding,
+      numCandidates: 200,
+      limit: 10,
+    },
+  },
+  {
+    $addFields: {
+      score: { $meta: "vectorSearchScore" },
+    },
+  },
+]);
 
-    // 🔍 DEBUG (remove later)
-    console.log(
-      results.slice(0, 3).map((r) => ({
+    // 🔥 DEBUG (optional - remove later)
+    console.log("VECTOR SCORES:");
+    results.slice(0, 5).forEach(r => {
+      console.log({
         score: r.score,
-        text: r.chunkText.slice(0, 80),
-      })),
-    );
+        fileName: r.fileName,
+        pageNumber: r.pageNumber
+      });
+    });
 
-    // 3️⃣ Filter weak results
-    const filtered = results.filter((doc) => doc.score > 0.35);
+    // 3️⃣ PROPER RAG RETRIEVAL (FIXED)
+    const filtered = results
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 5);
 
-    // 4️⃣ Fallback if no strong match
+    let context = "";
+    let sources = [];
+
+    // 4️⃣ Check if no results
     if (!filtered.length) {
-      console.log("⚠️ No strong vector match, using fallback...");
+      console.log("⚠️ No results found, using fallback...");
 
       const fallbackDocs = await Document.find().limit(3);
 
       if (!fallbackDocs.length) {
-        res.write("No documents available");
-        return res.end();
+        return res.json({ answer: "No documents available", sources: [] });
       }
 
-      const fallbackContext = fallbackDocs
+      sources = fallbackDocs.map((doc) => ({
+        fileName: doc.fileName,
+        pageNumber: doc.pageNumber,
+      }));
+
+      context = fallbackDocs
         .map(
           (doc, i) => `
 [Fallback Source ${i + 1}]
@@ -68,17 +75,20 @@ File: ${doc.fileName}
 Page: ${doc.pageNumber}
 
 ${doc.chunkText}
-`,
+`
         )
         .join("\n\n");
 
-      return await generateAnswerStream(fallbackContext, query, res);
-    }
+    } else {
 
-    // 5️⃣ Build context
-    const context = filtered
-      .map(
-        (doc, i) => `
+      sources = filtered.map((doc) => ({
+        fileName: doc.fileName,
+        pageNumber: doc.pageNumber,
+      }));
+
+      context = filtered
+        .map(
+          (doc, i) => `
 SOURCE ${i + 1}:
 File: ${doc.fileName}
 Page: ${doc.pageNumber}
@@ -86,14 +96,27 @@ Page: ${doc.pageNumber}
 Content:
 ${doc.chunkText}
 -------------------
-`,
-      )
-      .join("\n\n");
-    // 6️⃣ Stream answer
-    await generateAnswerStream(context, query, res);
+`
+        )
+        .join("\n\n");
+    }
+
+    // 5️⃣ Generate answer
+    let answer;
+
+    try {
+      answer = await generateAnswer(context, query);
+    } catch (err) {
+      console.log("⚠️ LLM failed, using simpleAnswer...");
+      const { simpleAnswer } = require("../services/simpleAnswerService");
+      answer = simpleAnswer(context, query);
+    }
+
+    // ✅ FINAL RESPONSE
+    return res.json({ answer, sources });
+
   } catch (error) {
     console.error(error);
-    res.write("\nQuery failed");
-    res.end();
+    return res.status(500).json({ error: "Query failed" });
   }
 };

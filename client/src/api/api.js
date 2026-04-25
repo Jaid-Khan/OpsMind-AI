@@ -10,18 +10,16 @@ const API = axios.create({
   },
 });
 
-// Request interceptor for logging (optional)
+// 🔥 Request interceptor
 API.interceptors.request.use(
   (config) => {
     console.log(`Making ${config.method.toUpperCase()} request to ${config.url}`);
     return config;
   },
-  (error) => {
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
-// Response interceptor for error handling (optional)
+// 🔥 Response interceptor
 API.interceptors.response.use(
   (response) => response,
   (error) => {
@@ -30,25 +28,31 @@ API.interceptors.response.use(
   }
 );
 
+// ✅ Upload PDF
 export const uploadPDF = (file) => {
   const formData = new FormData();
   formData.append("file", file);
-  
-  return API.post("/upload", formData, {
+
+  return API.post("/upload/upload", formData, {
     headers: {
       "Content-Type": "multipart/form-data",
     },
   });
 };
 
+// ✅ Query Docs (Chat)
 export const queryDocs = (query) => {
   return API.post("/query", { query });
 };
 
+// ✅ Get all documents
 export const getDocuments = () => {
-  return API.get("/documents");
+  return API.get("/admin/docs");
 };
 
-export const deleteDocument = (id) => {
-  return API.delete(`/documents/${id}`);
+// ✅ Delete document (by fileName)
+export const deleteDocument = (fileName) => {
+  return API.delete(`/admin/docs/${fileName}`);
 };
+
+export default API;
