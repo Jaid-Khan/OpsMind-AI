@@ -1,15 +1,21 @@
-const env = require("dotenv").config()
+require("dotenv").config();
 const express = require("express");
 const app = express();
+const cors = require("cors");
+
 const uploadRoutes = require("./routes/uploadRoutes");
 const queryRoutes = require("./routes/queryRoutes");
-const cors = require("cors")
+const adminRoutes = require("./routes/adminRoutes");
+
+app.use(cors());
 app.use(express.json());
-app.get("/", (req, res)=>{
-    res.send("This Home Page")
-})
-app.use(cors())
+
+app.get("/", (req, res) => {
+  res.send("OpsMind AI Backend Running");
+});
+
 app.use("/api", uploadRoutes);
 app.use("/api/query", queryRoutes);
+app.use("/api/admin", adminRoutes);
 
 module.exports = app;
