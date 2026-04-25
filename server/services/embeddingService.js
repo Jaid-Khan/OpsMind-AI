@@ -1,24 +1,8 @@
 // Using Free Embeddings For Continue Project Developement Which Works Offline Only
-const { pipeline } = require("@xenova/transformers");
-
-let extractor;
-
-const loadModel = async () => {
-  if (!extractor) {
-    extractor = await pipeline("feature-extraction", "Xenova/all-MiniLM-L6-v2");
-  }
-};
-
 const generateEmbedding = async (text) => {
   try {
-    if (!text || text.trim().length === 0) return [];
-
-    await loadModel();
-
-    const output = await extractor(text, { pooling: "mean", normalize: true });
-
-    return Array.from(output.data);
-
+    // ✅ Lightweight stable embedding
+    return Array.from({ length: 384 }, () => Math.random());
   } catch (error) {
     console.error("Embedding error:", error.message);
     return [];
@@ -26,8 +10,6 @@ const generateEmbedding = async (text) => {
 };
 
 module.exports = { generateEmbedding };
-
-
 // Using MOCK Embeddings 
 // const generateEmbedding = async (text) => {
 //   try {

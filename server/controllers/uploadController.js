@@ -25,28 +25,49 @@ const uploadPDF = async (req, res) => {
 
     const text = pdfData.text;
 
+    if (!text || text.trim().length === 0) {
+      return res.status(400).json({ error: "Empty PDF content" });
+    }
+
     const chunks = chunkText(text);
 
-    // ✅ Parallel embedding (FAST)
-    const docs = await Promise.all(
-      chunks.map(async (chunk, i) => ({
+    const docs = [];
+
+    // ✅ SAFE LOOP (NO CRASH)
+    for (let i = 0; i < chunks.length; i++) {
+      const chunk = chunks[i];
+
+      if (!chunk || chunk.length < 50) continue;
+
+      const embedding = await generateEmbedding(chunk);
+
+      docs.push({
         fileName,
         chunkText: chunk,
-        embedding: await generateEmbedding(chunk),
+        embedding,
         chunkIndex: i,
-        pageNumber: Math.floor(i / 3) + 1 // approx mapping
-      }))
-    );
+        pageNumber: Math.floor(i / 3) + 1
+      });
 
-    await Document.insertMany(docs);
+      // ✅ Batch insert (prevents memory crash)
+      if (docs.length === 50) {
+        await Document.insertMany(docs);
+        docs.length = 0;
+      }
+    }
+
+    // Insert remaining
+    if (docs.length > 0) {
+      await Document.insertMany(docs);
+    }
 
     res.status(200).json({
-      message: "PDF processed & stored",
+      message: "PDF processed & stored successfully",
       totalChunks: chunks.length
     });
 
   } catch (error) {
-    console.error(error);
+    console.error("UPLOAD ERROR:", error);
     res.status(500).json({ error: error.message });
   }
 };

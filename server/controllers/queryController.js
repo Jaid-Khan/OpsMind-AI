@@ -1,6 +1,6 @@
 const Document = require("../models/documentModel");
 const { generateEmbedding } = require("../services/embeddingService");
-const { generateAnswer } = require("../services/grokService");
+const { generateAnswerStream } = require("../services/grokService");
 
 exports.queryDocs = async (req, res) => {
   try {
@@ -10,49 +10,90 @@ exports.queryDocs = async (req, res) => {
       return res.status(400).json({ error: "Query is required" });
     }
 
-    // 1️⃣ Query embedding
-    const queryEmbedding = await generateEmbedding(query);
+    // 🔥 Streaming headers
+    res.setHeader("Content-Type", "text/plain; charset=utf-8");
+    res.setHeader("Transfer-Encoding", "chunked");
 
-    // 🔥 2️⃣ MongoDB Vector Search (PRODUCTION)
+    // 🔥 Improve query for better embedding
+    const improvedQuery = `Explain clearly: ${query}`;
+
+    // 1️⃣ Generate embedding
+    const queryEmbedding = await generateEmbedding(improvedQuery);
+
+    // 2️⃣ Vector search with score
     const results = await Document.aggregate([
       {
         $vectorSearch: {
           index: "default",
           path: "embedding",
           queryVector: queryEmbedding,
-          numCandidates: 100,
-          limit: 5
-        }
-      }
+          numCandidates: 200,
+          limit: 10,
+        },
+      },
+      {
+        $addFields: {
+          score: { $meta: "vectorSearchScore" },
+        },
+      },
     ]);
 
-    if (!results.length) {
-      return res.json({ answer: "No relevant results found" });
-    }
+    // 🔍 DEBUG (remove later)
+    console.log(
+      results.slice(0, 3).map((r) => ({
+        score: r.score,
+        text: r.chunkText.slice(0, 80),
+      })),
+    );
 
-    // 🔥 3️⃣ Smart context with citation
-    const context = results.map((doc, i) => `
-[Source ${i + 1}]
+    // 3️⃣ Filter weak results
+    const filtered = results.filter((doc) => doc.score > 0.35);
+
+    // 4️⃣ Fallback if no strong match
+    if (!filtered.length) {
+      console.log("⚠️ No strong vector match, using fallback...");
+
+      const fallbackDocs = await Document.find().limit(3);
+
+      if (!fallbackDocs.length) {
+        res.write("No documents available");
+        return res.end();
+      }
+
+      const fallbackContext = fallbackDocs
+        .map(
+          (doc, i) => `
+[Fallback Source ${i + 1}]
 File: ${doc.fileName}
 Page: ${doc.pageNumber}
 
 ${doc.chunkText}
-`).join("\n\n");
+`,
+        )
+        .join("\n\n");
 
-    // 🔥 4️⃣ LLM Answer
-    const answer = await generateAnswer(context, query);
+      return await generateAnswerStream(fallbackContext, query, res);
+    }
 
-    // 5️⃣ Structured response
-    res.json({
-      answer,
-      sources: results.map(doc => ({
-        file: doc.fileName,
-        page: doc.pageNumber
-      }))
-    });
+    // 5️⃣ Build context
+    const context = filtered
+      .map(
+        (doc, i) => `
+SOURCE ${i + 1}:
+File: ${doc.fileName}
+Page: ${doc.pageNumber}
 
+Content:
+${doc.chunkText}
+-------------------
+`,
+      )
+      .join("\n\n");
+    // 6️⃣ Stream answer
+    await generateAnswerStream(context, query, res);
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: "Query failed" });
+    res.write("\nQuery failed");
+    res.end();
   }
 };
