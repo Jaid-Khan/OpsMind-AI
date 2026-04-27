@@ -1,17 +1,28 @@
-# 🧠 OpsMind AI — Complete Enterprise RAG Documentation
+# 🧠 OpsMind AI — Enterprise RAG Documentation
+
+---
 
 ## 📌 Project Overview
 
-**OpsMind AI** is an **Enterprise SOP Agent based on RAG (Retrieval-Augmented Generation) Architecture**. It helps organizations efficiently access, understand, and interact with internal Standard Operating Procedures (SOPs) using AI. Instead of manually searching documents, users can ask questions in natural language and receive accurate, context-aware answers generated from retrieved company data.
+**OpsMind AI** is an **Enterprise SOP Agent based on RAG (Retrieval-Augmented Generation) Architecture**. It helps organizations efficiently access, understand, and interact with internal Standard Operating Procedures (SOPs) using AI.
 
-### 🎯 Purpose of the Project
+This system allows users to:
+- Upload PDF documents
+- Ask natural language questions
+- Receive accurate, context-aware answers generated from retrieved company data
+- Get responses with cited sources
+
+---
+
+## 🎯 Purpose of the Project
 
 Build a **real-world AI-powered enterprise solution** demonstrating:
-- Integration of AI with MERN stack
-- Retrieval-Augmented Generation (RAG) pipeline
-- Document understanding & semantic search
-- Scalable backend architecture
-- Production-ready code structure
+
+- Complete **RAG (Retrieval-Augmented Generation) pipeline**
+- PDF ingestion, chunking, and vector embedding
+- Semantic search using **MongoDB Atlas Vector Search**
+- Integration with **Groq’s LLM (Llama 3.1)** for fast inference
+- Enterprise-ready backend architecture with admin capabilities
 
 ---
 
@@ -19,373 +30,273 @@ Build a **real-world AI-powered enterprise solution** demonstrating:
 
 ### 🤖 What is an SOP Agent?
 
-An SOP Agent is an AI system that helps employees quickly find and understand company procedures, guidelines, and documentation through natural language conversations.
+An **SOP Agent** is an AI system that helps employees quickly find and understand company procedures, guidelines, and documentation through natural language conversations.
 
-### 🧠 How RAG Architecture Works
+It provides:
+- Instant answers from internal documents
+- Context-aware responses
+- Source citations for verification
+- Reduced dependency on manual document searching
 
-```
-1. Document Upload → SOP documents uploaded (PDF/Text)
-2. Embedding Generation → Text converted into vector embeddings
-3. Vector Database Storage → Stored for semantic search
-4. User Query → User asks a question
-5. Retrieval → Relevant document chunks fetched via vector search
-6. Generation → AI model generates precise answer using retrieved context
-```
+## 🧠 How RAG Architecture Works (Implemented)
 
-### 👤 User Functionalities
+Document Upload → PDF uploaded & parsed  
+Chunking → Text split into overlapping chunks (1000 chars, 150 overlap)  
+Embedding → Each chunk → 384-dim vector (local/all-MiniLM-L6-v2)  
+Storage → Chunks + vectors stored in MongoDB  
+User Query → "How to request leave?"  
+Query Embedding → Convert query to vector  
+Vector Search → MongoDB $vectorSearch retrieves top chunks  
+Context Assembly → Chunks + metadata formatted  
+LLM Generation → Groq (Llama 3.1) generates cited answer  
+Response → Answer + sources returned to user  
 
-- Ask questions in natural language
-- Get accurate answers from SOP documents
-- Upload documents for processing
-- Real-time response generation
+## 👤 User Functionalities
 
-### ⚙️ System Capabilities
-
-- Semantic search (not keyword-based)
-- Context-aware AI responses
-- File upload & processing pipeline
-- Scalable backend APIs
+- Ask questions in natural language  
+- View answers with cited sources (filename, page number)  
+- Upload PDF documents for processing  
+- Admin: View all documents & delete them  
 
 ---
+
+## ⚙️ System Capabilities
+
+- Semantic vector search (not keyword-based)  
+- Context-aware AI responses with source attribution  
+- PDF upload & processing pipeline (with duplicate protection)  
+- Admin document management  
+- Streaming & non-streaming LLM responses  
+- Fallback simple answer service if LLM fails  
 
 ## 🏗️ Complete System Architecture
 
-### 🔄 End-to-End Flow
-
-```
-User uploads PDF
-        ↓
-File stored using Multer
-        ↓
-PDF parsed into raw text (pdf-parse)
-        ↓
-Text split into chunks (500 chars, 100 overlap)
-        ↓
-Each chunk converted into embedding vector (384 dims)
-        ↓
-Stored in MongoDB with embeddings
-        ↓
-User asks question
-        ↓
-Query converted to embedding
-        ↓
-MongoDB Vector Search (semantic retrieval)
-        ↓
-Top 3-5 relevant chunks retrieved
-        ↓
-Context builder assembles chunks
-        ↓
-AI generates answer using context + query
-        ↓
-Response sent to user
-```
-
-### 📂 Complete Project Structure
-
-```
-project-root/
-│
-├── client/                    # React Frontend
-│   ├── node_modules/
-│   ├── src/
-│   │   ├── components/
-│   │   │   ├── ChatInterface.jsx
-│   │   │   ├── FileUpload.jsx
-│   │   │   └── DocumentList.jsx
-│   │   ├── services/
-│   │   │   └── api.js
-│   │   ├── App.jsx
-│   │   └── main.jsx
-│   ├── public/
-│   ├── .env
-│   ├── .gitignore
-│   └── package.json
-│
-├── server/                    # Node + Express Backend
-│   ├── node_modules/
-│   ├── config/
-│   │   └── db.js
-│   ├── models/
-│   │   └── documentModel.js
-│   ├── controllers/
-│   │   ├── uploadController.js
-│   │   └── searchController.js
-│   ├── services/
-│   │   └── embeddingService.js
-│   ├── routes/
-│   │   ├── uploadRoutes.js
-│   │   └── searchRoutes.js
-│   ├── middlewares/
-│   │   └── uploadMiddleware.js
-│   ├── utils/
-│   │   └── chunker.js
-│   ├── uploads/               # Temporary storage
-│   ├── index.js
-│   ├── app.js
-│   ├── .env
-│   ├── .gitignore
-│   └── package.json
-│
-├── .gitignore
-└── README.md
-```
-
 ---
+
+## 🔄 End-to-End Flow
+
+- User uploads PDF  
+  ↓  
+- File stored using Multer (5MB limit)  
+  ↓  
+- PDF parsed into raw text (pdf-parse)  
+  ↓  
+- Text cleaned & split into chunks (1000 chars, 150 overlap)  
+  ↓  
+- Each chunk → 384-dim embedding (local/all-MiniLM-L6-v2)  
+  ↓  
+- Stored in MongoDB with fileName, chunkIndex, pageNumber  
+  ↓  
+- User asks question  
+  ↓  
+- Query → improved ("Explain clearly: {query}") → embedding  
+  ↓  
+- MongoDB Vector Search (index: "vector_index", cosine similarity)  
+  ↓  
+- Top 10 chunks retrieved → filtered to top 5 by score  
+  ↓  
+- If 0 results → fallback to last 3 documents  
+  ↓  
+- Context builder assembles chunks with source metadata  
+  ↓  
+- Groq LLM (Llama 3.1) generates answer (or simpleAnswer fallback)  
+  ↓  
+- Response `{ answer, sources }` sent to user  
+
+## 📂 Complete Project Structure (Backend-Focused)
+
+
+## 📂 Complete Project Structure (Backend-Focused)
+
+```
+server/
+│
+├── config/
+│   └── db.js                      # MongoDB connection
+│
+├── models/
+│   └── documentModel.js           # Schema: fileName, chunkText, embedding(384), chunkIndex, pageNumber
+│
+├── controllers/
+│   ├── adminController.js         # getAllDocs (aggregated), deleteDoc
+│   ├── queryController.js         # queryDocs (RAG pipeline)
+│   └── uploadController.js        # uploadPDF (chunk, embed, store)
+│
+├── services/
+│   ├── embeddingService.js        # Generates 384-dim random embeddings (offline/dev)
+│   ├── grokService.js             # Groq LLM (streaming + non-streaming) with strict prompt
+│   └── simpleAnswerService.js     # Fallback keyword-based answer generator
+│
+├── routes/
+│   ├── adminRoutes.js             # GET /docs, DELETE /docs/:fileName
+│   ├── queryRoutes.js             # POST /
+│   └── uploadRoutes.js            # POST /upload
+│
+├── middlewares/
+│   └── uploadMiddleware.js        # Multer config (5MB, PDF only)
+│
+├── utils/
+│   └── chunker.js                 # Text cleaning & chunking (1000 chars, 150 overlap)
+│
+├── uploads/                       # Temporary Multer storage
+├── .env
+├── app.js                         # Express app with CORS, JSON, error handling
+├── index.js                       # Server entry (app.listen + connectDB)
+└── package.json
+```
 
 ## ⚙️ Technical Stack
 
-### Frontend
-- **React.js** with modern hooks (useState, useEffect)
-- **Vite** for fast development
-- **Axios** for API integration
-- **React Router** for navigation
+---
 
-### Backend
-- **Node.js** + **Express.js** REST APIs
-- **MongoDB** with Mongoose ODM
-- **Multer** for file uploads
-- **pdf-parse** for PDF text extraction
-
-### AI & ML
-- **@google/generative-ai** for embeddings & LLM
-- **all-MiniLM-L6-v2** (384-dim embeddings) via HuggingFace
-- Vector search via MongoDB Atlas
-
-### Security & Utilities
-- **bcrypt** for password hashing
-- **jsonwebtoken** for authentication
-- **dotenv** for environment management
-- **cors** for cross-origin requests
+## 🖥️ Backend
+- Node.js + Express.js (REST APIs)  
+- MongoDB with Mongoose ODM & Atlas Vector Search  
+- Multer for file uploads (PDF only, 5MB limit)  
+- pdf-parse for PDF text extraction  
 
 ---
+
+## 🤖 AI & ML
+- Groq (Llama 3.1 8B) for LLM responses (streaming support)  
+- Local Embeddings (384-dim, all-MiniLM-L6-v2 via transformers.js — currently using random for dev)  
+- MongoDB Atlas Vector Search with cosine similarity  
+
+---
+
+## 🛠️ Admin & Utilities
+- dotenv for environment management  
+- cors for cross-origin requests  
+- fs for file operations  
 
 ## 🔐 Environment Variables Setup
 
-### Backend (`server/.env`)
+---
+
+## 🖥️ Backend (`server/.env`)
 
 ```env
 PORT=5000
-MONGO_URI=mongodb+srv://<username>:<password>@<cluster>.mongodb.net/opsmind-Ai
-GEMINI_API_KEY=your_gemini_api_key
-JWT_SECRET=your_jwt_secret_key
-CLIENT_URL=http://localhost:5173
-NODE_ENV=development
+MONGO_URI=mongodb+srv://<username>:<password>@<cluster>.mongodb.net/opsmind-ai
+GROQ_API_KEY=your_groq_api_key
 ```
 
-### Frontend (`client/.env`)
+## ⚠️ Important Notes
 
-```env
-VITE_API_URL=http://localhost:5000/api
-```
+- Never commit `.env` files to GitHub  
+- Keep all secrets (MongoDB URI, API keys) private  
+- The system uses **Groq (not Gemini)** for LLM responses  
 
-> ⚠️ **Important:** Never push `.env` files to GitHub. Add to `.gitignore`.
+## 📦 Core Dependencies Explanation
 
----
-
-## 📦 Complete Dependencies Explanation
-
-### 🧠 AI & Core Logic
-| Package | Purpose |
-|---------|---------|
-| `@google/generative-ai` | Gemini API for LLM responses & embeddings |
-| `mathjs` | Mathematical operations & vector similarity |
-| `@huggingface/transformers` | Local embedding generation (all-MiniLM-L6-v2) |
-
-### 🔐 Authentication & Security
-| Package | Purpose |
-|---------|---------|
-| `bcrypt` | Hash passwords securely |
-| `jsonwebtoken` | JWT-based authentication |
-| `express-session` | Session-based authentication (optional) |
-| `cookie-parser` | Parse cookies from requests |
-
-### 🌐 Backend & Server
-| Package | Purpose |
-|---------|---------|
-| `express` | Core backend framework |
-| `cors` | Enable frontend-backend communication |
-| `dotenv` | Manage environment variables |
-
-### 🗄️ Database
-| Package | Purpose |
-|---------|---------|
-| `mongoose` | MongoDB ODM for schema & operations |
-
-### 📥 File Handling
-| Package | Purpose |
-|---------|---------|
-| `multer` | Handle PDF file uploads |
-| `pdf-parse` | Extract text content from PDFs |
-
-### ✅ Validation
-| Package | Purpose |
-|---------|---------|
-| `express-validator` | Validate user inputs & API requests |
-
-### 🆔 Utilities
-| Package | Purpose |
-|---------|---------|
-| `uuid` | Generate unique identifiers |
-
-### ⚙️ Development
-| Package | Purpose |
-|---------|---------|
-| `nodemon` | Auto-restart server during development |
-| `vite` | Fast frontend build tool |
-
----
+| Package     | Purpose |
+|------------|--------|
+| express    | Core backend framework |
+| mongoose   | MongoDB ODM & Vector Search support |
+| multer     | Handle PDF file uploads (5MB limit) |
+| pdf-parse  | Extract text content from PDFs |
+| groq-sdk   | Groq API client for Llama 3.1 |
+| cors       | Enable frontend-backend communication |
+| dotenv     | Manage environment variables |
+| nodemon    | Auto-restart server during development |
 
 ## 🔄 Complete API Endpoints
 
-### 1. Upload PDF Document
+---
+
+## 1. Upload PDF Document
+
 **POST** `/api/upload`
 
-**Request (form-data):**
-```
-key: file
-type: File
-value: PDF file
-```
+### Request
+- Type: `multipart/form-data`
+- Field: `file` (PDF, max 5MB)
 
-**Response:**
+### Response
+
 ```json
 {
-  "message": "PDF processed & stored with embeddings",
-  "totalChunks": 13
+  "message": "PDF processed & stored successfully",
+  "totalChunks": 42
 }
 ```
 
-### 2. Semantic Search
-**POST** `/api/search`
+## 2. Query Documents (RAG)
 
-**Request Body:**
+**POST** `/api/query`
+
+---
+
+## 📥 Request Body
+
 ```json
 {
-  "query": "How do I access student management system?"
+  "query": "How do I access the student management system?"
 }
-```
+## 📤 Response
 
-**Response:**
 ```json
 {
-  "success": true,
-  "query": "How do I access student management system?",
-  "results": [
-    {
-      "text": "Dashboard → View Courses → Check Attendance...",
-      "fileName": "University Document.pdf",
-      "relevanceScore": 0.89
-    }
+  "answer": "According to [File: University_Handbook.pdf, Page: 3], you can access the student management system by navigating to Dashboard → View Courses.",
+  "sources": [
+    { "fileName": "University_Handbook.pdf", "pageNumber": 3 },
+    { "fileName": "University_Handbook.pdf", "pageNumber": 5 }
   ]
 }
 ```
 
-### 3. Ask Question (RAG Response)
-**POST** `/api/ask`
+## 3. Get All Documents (Admin)
 
-**Request Body:**
-```json
-{
-  "question": "What is the procedure for leave approval?"
-}
-```
-
-**Response:**
-```json
-{
-  "success": true,
-  "question": "What is the procedure for leave approval?",
-  "answer": "Based on the SOP document, leave approval requires...",
-  "sources": ["HR_Policy.pdf", "Employee_Handbook.pdf"]
-}
-```
+**GET** `/api/admin/docs`
 
 ---
 
+## 📤 Response
+
+```json
+{
+  "documents": [
+    {
+      "fileName": "HR_Policy.pdf",
+      "totalChunks": 120,
+      "createdAt": "2026-04-01T10:00:00Z"
+    }
+  ]
+}
+```
+## 4. Delete Document (Admin)
+
+**DELETE** `/api/admin/docs/:fileName`
+
+---
+
+## 📤 Response
+
+```json
+{
+  "message": "Document deleted successfully"
+}
+```
+
 ## 🧠 Core Implementation Details
 
-### Embedding Generation Service
+---
+
+## 📊 Database Schema (documentModel.js)
 
 ```javascript
-// services/embeddingService.js
-const { pipeline } = require('@huggingface/transformers');
-
-let extractor = null;
-
-const getExtractor = async () => {
-  if (!extractor) {
-    extractor = await pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2');
-  }
-  return extractor;
-};
-
-const generateEmbedding = async (text) => {
-  try {
-    const extractor = await getExtractor();
-    const output = await extractor(text, {
-      pooling: 'mean',
-      normalize: true,
-    });
-    return Array.from(output.data);
-  } catch (error) {
-    console.error('Embedding error:', error.message);
-    return null;
-  }
-};
-```
-
-### Chunking Logic
-
-```javascript
-// utils/chunker.js
-exports.chunkText = (text) => {
-  const chunkSize = 500;  // characters
-  const overlap = 100;     // overlap between chunks
-  
-  let chunks = [];
-  
-  for (let i = 0; i < text.length; i += (chunkSize - overlap)) {
-    const chunk = text.slice(i, i + chunkSize);
-    if (chunk.trim().length > 0) {
-      chunks.push(chunk);
-    }
-  }
-  
-  return chunks;
-};
-```
-
-### Database Schema
-
-```javascript
-// models/documentModel.js
 const documentSchema = new mongoose.Schema({
-  fileName: {
-    type: String,
-    required: true
-  },
-  chunkText: {
-    type: String,
-    required: true
-  },
-  embedding: {
-    type: [Number],
-    required: true
-  },
-  createdAt: {
-    type: Date,
-    default: Date.now
-  }
+  fileName: { type: String, required: true, index: true },
+  chunkText: { type: String, required: true },
+  embedding: { type: [Number], required: true },  // 384 dimensions
+  chunkIndex: { type: Number, required: true },
+  pageNumber: { type: Number, required: true },
+  createdAt: { type: Date, default: Date.now }
 });
 
-// Create vector search index (MongoDB Atlas)
-// Index name: vector_index
-// Path: embedding
-// Dimensions: 384
-// Similarity: cosine
 ```
 
-### MongoDB Atlas Vector Index Configuration
+## 🧠 MongoDB Atlas Vector Index Configuration
 
 ```json
 {
@@ -402,355 +313,332 @@ const documentSchema = new mongoose.Schema({
 }
 ```
 
-### Vector Search Controller
+## ⚙️ Chunking Logic (chunker.js)
 
 ```javascript
-// controllers/searchController.js
-const searchQuery = async (req, res) => {
-  const { query } = req.body;
-  
-  // Generate embedding for query
-  const queryEmbedding = await generateEmbedding(query);
-  
-  // Perform vector search
-  const results = await Document.aggregate([
-    {
-      $vectorSearch: {
-        index: "vector_index",
-        path: "embedding",
-        queryVector: queryEmbedding,
-        numCandidates: 100,
-        limit: 5
-      }
-    },
-    {
-      $project: {
-        fileName: 1,
-        chunkText: 1,
-        score: { $meta: "vectorSearchScore" }
-      }
-    }
-  ]);
-  
-  res.json({ success: true, results });
+exports.chunkText = (text) => {
+  const cleaned = cleanText(text);  // Removes special chars
+  const chunkSize = 1000;           // characters
+  const overlap = 150;              // overlap between chunks
+
+  let chunks = [];
+
+  for (let i = 0; i < cleaned.length; i += (chunkSize - overlap)) {
+    chunks.push(cleaned.slice(i, i + chunkSize));
+  }
+
+  return chunks;
 };
 ```
+## 🔍 Vector Search Query (queryController.js)
+
+```javascript
+const results = await Document.aggregate([
+  {
+    $vectorSearch: {
+      index: "vector_index",
+      path: "embedding",
+      queryVector: queryEmbedding,
+      numCandidates: 200,
+      limit: 10,
+    },
+  },
+  { $addFields: { score: { $meta: "vectorSearchScore" } } },
+]);
+
+// Filter to top 5 by score
+const filtered = results.sort((a, b) => b.score - a.score).slice(0, 5);
+```
+
+## 🤖 Groq LLM Prompt (Strict RAG)
+
+You are OpsMind AI — an enterprise SOP assistant.
 
 ---
+
+### ⚠️ STRICT RULES:
+
+1. Answer ONLY using the provided context  
+2. DO NOT say "I don't have" or "I infer"  
+3. DO NOT explain limitations  
+4. Give a direct, confident answer  
+5. Always cite like:  
+   **According to [File: <fileName>, Page: <pageNumber>]**
+
+---
+
+### ❌ If answer is not found:
+I don't know based on the provided documents.
+
+## 🔁 Fallback Simple Answer Service
+
+If Groq LLM fails, a keyword-based scorer extracts relevant sentences from context to generate a basic response.
 
 ## ⚡ Installation & Setup Guide
 
-### Prerequisites
-- Node.js (v18 or higher)
-- MongoDB Atlas account (free tier)
-- npm or yarn package manager
+---
 
-### 1️⃣ Clone the Repository
+## 🧰 Prerequisites
+
+- Node.js (v18 or higher)  
+- MongoDB Atlas account (free tier) with Vector Search enabled  
+- Groq API key (free tier available)  
+
+## 1️⃣ Clone & Install
 
 ```bash
 git clone <your-repo-url>
-cd opsmind-ai
-```
-
-### 2️⃣ Install Backend Dependencies
-
-```bash
-cd server
+cd opsmind-ai/server
 npm install
 ```
 
-**Backend packages installed:**
-- express, mongoose, dotenv, cors
-- multer, pdf-parse
-- @google/generative-ai
-- @huggingface/transformers
-- bcrypt, jsonwebtoken
-- nodemon (dev)
+## 2️⃣ Configure Environment
 
-### 3️⃣ Install Frontend Dependencies
+Create `server/.env`:
 
-```bash
-cd ../client
-npm install
-```
-
-**Frontend packages installed:**
-- react, react-dom
-- vite
-- axios
-- react-router-dom
-
-### 4️⃣ Configure Environment Variables
-
-**Backend (`server/.env`):**
 ```env
 PORT=5000
-MONGO_URI=mongodb+srv://<username>:<password>@<cluster>.mongodb.net/opsmind-ai
-GEMINI_API_KEY=your_actual_key
-JWT_SECRET=your_super_secret_key
-CLIENT_URL=http://localhost:5173
+MONGO_URI=mongodb+srv://<user>:<pass>@<cluster>.mongodb.net/opsmind-ai
+GROQ_API_KEY=your_groq_api_key
 ```
 
-**Frontend (`client/.env`):**
-```env
-VITE_API_URL=http://localhost:5000/api
-```
+## 3️⃣ Create MongoDB Atlas Vector Index
 
-### 5️⃣ Create MongoDB Atlas Vector Index
+- Go to your MongoDB Atlas cluster  
+- Navigate to **Atlas Search → Create Index**  
+- Select **"JSON Editor" → Vector Search**  
+- Use the vector index configuration provided earlier  
+- Name the index: `vector_index`  
+- Ensure the path `embedding` matches your schema field  
 
-1. Go to MongoDB Atlas → Collections
-2. Click on "Indexes" tab
-3. Click "Create Index"
-4. Select "Vector Search"
-5. Use configuration:
-   ```json
-   {
-     "fields": [{
-       "type": "vector",
-       "path": "embedding",
-       "numDimensions": 384,
-       "similarity": "cosine"
-     }]
-   }
-   ```
-6. Name it: `vector_index`
-
----
-
-## ▶️ Running the Project
-
-### 🔥 Run Backend Server
+## 4️⃣ Run Backend
 
 ```bash
-cd server
-npm run dev
+npm run dev   # Runs on http://localhost:5000
 ```
-Server runs at: `http://localhost:5000`
-
-### 🎨 Run Frontend Client
-
-```bash
-cd client
-npm run dev
-```
-Client runs at: `http://localhost:5173`
-
----
 
 ## 🧪 Testing the System
 
-### Step 1: Upload a PDF
+---
+
+## 📤 Upload a PDF
 
 ```bash
 curl -X POST http://localhost:5000/api/upload \
-  -F "file=@/path/to/your/document.pdf"
-```
+  -F "file=@/path/to/sop.pdf"
+  ```
 
-### Step 2: Search for Content
-
-```bash
-curl -X POST http://localhost:5000/api/search \
-  -H "Content-Type: application/json" \
-  -d '{"query": "your search question here"}'
-```
-
-### Step 3: Ask for AI Response
+## ❓ Ask a Question
 
 ```bash
-curl -X POST http://localhost:5000/api/ask \
+curl -X POST http://localhost:5000/api/query \
   -H "Content-Type: application/json" \
-  -d '{"question": "your question here"}'
+  -d '{"query": "What is the leave approval procedure?"}'
+  ```
+
+## 📄 List All Documents
+
+```bash
+curl http://localhost:5000/api/admin/docs
 ```
 
----
+## 🗑️ Delete a Document
 
-## 📊 Database Schema Examples
-
-### Stored Document
-
-```json
-{
-  "_id": "65f8a3b1c2d4e5f6a7b8c9d0",
-  "fileName": "University Document.pdf",
-  "chunkText": "Dashboard → View Courses → Check Attendance → Submit Leave Request",
-  "embedding": [0.021, -0.77, 0.55, 0.12, -0.34, ...],  // 384 dimensions
-  "createdAt": "2026-04-15T19:54:46.034Z",
-  "__v": 0
-}
+```bash
+curl -X DELETE http://localhost:5000/api/admin/docs/HR_Policy.pdf
 ```
 
----
-
-## 🔄 API Communication Flow
-
-```
-React Frontend (Axios Request)
-        ↓
-Express Backend (Route Handler)
-        ↓
-Controller (Business Logic)
-        ↓
-Service (Embedding Generation)
-        ↓
-Database (MongoDB Vector Search)
-        ↓
-Response sent back to Frontend
-```
+## 📊 Special Features
 
 ---
 
-## 🛠️ NPM Scripts
-
-### Backend (`server/package.json`)
-```json
-"scripts": {
-  "dev": "nodemon index.js",
-  "start": "node index.js"
-}
-```
-
-### Frontend (`client/package.json`)
-```json
-"scripts": {
-  "dev": "vite",
-  "build": "vite build",
-  "preview": "vite preview"
-}
-```
+### ⚡ Streaming LLM Responses
+`grokService.js` exposes `generateAnswerStream()` for real-time token-by-token responses.
 
 ---
 
-## 🚫 Important Security Notes
-
-- **Never commit `.env` files** to GitHub
-- Use `.env.example` to share variable structure
-- Run `npm install` after cloning (node_modules not in repo)
-- Always validate user inputs before processing
-- Implement rate limiting for API endpoints
-- Use HTTPS in production
+### 🛠️ Admin Aggregation Pipeline
+`getAllDocs` groups by `fileName`, sums chunks, and returns a clean document list.
 
 ---
 
-## 🚀 Deployment Guidelines
-
-### Backend Deployment (Render/Railway/AWS)
-1. Push code to GitHub repository
-2. Connect to deployment service
-3. Set environment variables in dashboard
-4. Replace local MongoDB URI with production URI
-5. Deploy from main branch
-
-### Frontend Deployment (Netlify/Vercel)
-1. Build project: `npm run build`
-2. Connect to deployment service
-3. Set environment variables
-4. Deploy production build
+### 🛡️ Duplicate File Protection
+Upload controller checks for existing `fileName` before processing to avoid duplicates.
 
 ---
 
-## 📈 Current Implementation Status
-
-### ✅ Completed Phases
-- ✔ File Upload API with Multer
-- ✔ PDF Parsing & Text Extraction
-- ✔ Text Chunking (500 chars, 100 overlap)
-- ✔ Local Embedding Generation (384-dim vectors)
-- ✔ MongoDB Storage with Embeddings
-- ✔ Database Schema Design
-
-### 🚧 Next Phases
-- 🔄 MongoDB Atlas Vector Search Integration
-- 🔄 Semantic Query Endpoint
-- 🔄 RAG Response Generation
-- 🔄 Chat Interface (Frontend)
-- 🔄 User Authentication
+### 📦 Batch Insert (Memory Safe)
+Upload controller inserts chunks in batches of 50 to prevent memory overflow during large PDF processing.
 
 ---
 
-## 🎯 Key Takeaways
+### 🔁 Fallback Logic
+If vector search returns 0 results, the system fetches the last 3 documents as fallback context.
 
-### What This System Achieves
-
-**Before:**
-- Just file storage ❌
-- No intelligence ❌
-- Keyword search only ❌
-
-**After:**
-- Semantic understanding of content ✅
-- Vector-based representation ✅
-- Ready for AI search & chat ✅
-- Production-ready architecture ✅
-
-### Why This Matters
-
-This is the **foundation of any real-world AI application** — turning raw data into machine-understandable vectors. The system transforms from a simple backend into an **AI-ready data pipeline** where each chunk is independently searchable and the database holds **semantic meaning**, not just text.
+## 🚫 Important Security & Operational Notes
 
 ---
+
+- Embeddings are currently random (384-dim) for development. Replace `embeddingService.js` with an actual `transformers.js` pipeline for production.
+
+- Multer stores files temporarily in `uploads/`. Consider using cloud storage (e.g., AWS S3) in production.
+
+- Delete operation removes DB entries but attempts to delete all `.pdf` files in `uploads/` (broad approach). Improve it to target specific files.
+
+- Environment variables must be properly set before running the application.
+
+- CORS is currently open (`origin: "*"`) — restrict it in production for better security.
 
 ## 🔍 Troubleshooting Guide
 
-### Issue: MongoDB Connection Error
-**Solution:** Check MONGO_URI in `.env` and ensure network access in Atlas
+| Issue | Solution |
+|------|----------|
+| MongoDB connection error | Check `MONGO_URI` & network access in Atlas |
+| Vector search returns 0 results | Verify index name `vector_index` & dimensions (384) |
+| GROQ_API_KEY missing | Set `GROQ_API_KEY` in `.env` |
+| Upload fails (file too large) | Increase `limits.fileSize` in `uploadMiddleware.js` |
+| PDF text empty | PDF might be scanned/image-based. Use OCR preprocessing |
+| Embedding generation slow | Replace random embeddings with local `transformers.js` or API-based embedding |
 
-### Issue: Embeddings Not Generating
-**Solution:** Verify API keys and install `@huggingface/transformers`
-
-### Issue: Vector Search Not Working
-**Solution:** Confirm vector index exists in Atlas and dimensions match (384)
-
-### Issue: CORS Errors
-**Solution:** Check CLIENT_URL in backend `.env` and restart server
-
----
-
-## 👨‍💻 Developer Notes
-
-This project follows industry-level MERN practices:
-- Separation of concerns
-- Clean code structure
-- API-first approach
-- Reusable components
-- Modular architecture
-- Error handling & loading states
+## 🚀 Deployment Guidelines
 
 ---
 
-## 💡 Pro Tips
+## 🌐 Deploy Backend (Render / Railway)
 
-1. **Always re-upload PDFs** after changing embedding model
-2. **Monitor MongoDB Atlas** for vector search performance
-3. **Use batches** when uploading multiple documents
-4. **Test with small PDFs** first to validate pipeline
-5. **Keep chunk size optimized** for your use case (500-1000 chars)
+- Push your project to GitHub  
+- Connect your repository to Render or Railway  
+- Set all required **environment variables**  
+- Configure build and start commands:
 
----
+### Build Command
+```bash
+npm install
+```
 
-## 📚 Additional Resources
+## ▶️ Start Command
 
-- [MongoDB Vector Search Documentation](https://www.mongodb.com/docs/atlas/atlas-vector-search/)
-- [HuggingFace Transformers.js](https://huggingface.co/docs/transformers.js/index)
-- [RAG Architecture Guide](https://www.pinecone.io/learn/rag/)
+```bash
+node index.js
+```
 
----
+## 🗄️ MongoDB Production Setup
 
-## 🏁 Final Summary
+- Use a dedicated MongoDB Atlas cluster (M10+ recommended for Vector Search)  
+- Configure IP whitelist for secure access  
+- Use strong, secure credentials for database access  
 
-```You have successfully built:
-
-✔ A complete document ingestion pipeline
-✔ A text processing engine with chunking
-✔ A semantic embedding system (384-dim vectors)
-✔ A database ready for AI search
-✔ Production-ready MERN architecture
-✔ Foundation for RAG implementation
+## 📈 Current Implementation Status
 
 ---
 
-## 🔥 Core Achievement
+## ✅ Completed
 
-> **From raw PDF to AI-ready vectors** — OpsMind AI now has the complete pipeline for document understanding, semantic search, and intelligent retrieval. This is the backbone of any enterprise AI system.
+- Full RAG pipeline (upload → chunk → embed → store → query → vector search → LLM → response)  
+- Admin document management (list + delete)  
+- Groq Llama 3.1 integration (streaming + non-streaming)  
+- Fallback simple answer service  
+- Duplicate file detection  
+- Batch insert for large PDFs  
+- Source citation in responses  
 
 ---
 
-**Built as part of the OpsMind AI Project** — A production-style AI system designed for intelligent document understanding, semantic search, and retrieval-augmented generation in enterprise environments.```
+## 🚧 Future Improvements
+
+- Replace random embeddings with `@huggingface/transformers` (all-MiniLM-L6-v2)  
+- Add user authentication (JWT)  
+- Implement frontend React UI  
+- Add support for DOCX, TXT files  
+- Improve file deletion to target specific file  
+- Add rate limiting & request validation  
+
+## 🎯 Key Achievements
+
+From PDF to AI-powered answers with citations — **OpsMind AI** implements a production-ready RAG pipeline with:
+
+- Semantic vector search  
+- Strict context-adherent LLM responses  
+- Admin document management  
+- Robust error handling & fallbacks  
+
+## 📡 Complete API Endpoints
+
+**Base URL:** `http://localhost:5000`
+
+---
+
+## 1️⃣ Upload API
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST   | `/api/upload` | Upload & process PDF document |
+
+**Full URL:**  
+`http://localhost:5000/api/upload`
+
+---
+
+## 📥 Request
+
+- Type: `multipart/form-data`  
+- Field: `file` (PDF, max 5MB)
+
+## 2️⃣ Query API (RAG)
+
+| Method | Endpoint     | Description |
+|--------|-------------|-------------|
+| POST   | `/api/query` | Ask questions & get AI answers from documents |
+
+**Full URL:**  
+`http://localhost:5000/api/query`
+
+## 📥 Request Body
+
+```json
+{
+  "query": "Your question here"
+}
+```
+
+## 3️⃣ Admin APIs
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET    | `/api/admin/docs` | Get all documents (grouped by fileName) |
+| DELETE | `/api/admin/docs/:fileName` | Delete specific document & its chunks |
+
+---
+
+## 🌐 Full URLs
+
+- `http://localhost:5000/api/admin/docs`  
+- `http://localhost:5000/api/admin/docs/HR_Policy.pdf`
+
+## 4️⃣ Health Check
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET    | `/`      | Server health check |
+
+---
+
+## 🌐 Full URL
+
+`http://localhost:5000/`
+
+---
+
+## 📤 Response
+OpsMind AI Backend Running
+
+## 📋 API Summary Table
+
+| # | Method | URL | Purpose |
+|---|--------|-----|---------|
+| 1 | POST | http://localhost:5000/api/upload | Upload PDF |
+| 2 | POST | http://localhost:5000/api/query | Ask question (RAG) |
+| 3 | GET | http://localhost:5000/api/admin/docs | List all documents |
+| 4 | DELETE | http://localhost:5000/api/admin/docs/:fileName | Delete document |
+| 5 | GET | http://localhost:5000/ | Health check |
+
