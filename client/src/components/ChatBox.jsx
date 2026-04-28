@@ -2,6 +2,7 @@
 import { useState, useRef, useEffect } from "react";
 import { queryDocs } from "../api/api";
 import Message from "./Message";
+import { cleanAnswer } from "../utils/cleanAnswer";
 
 export default function ChatBox() {
   const [messages, setMessages] = useState([]);
@@ -20,7 +21,7 @@ export default function ChatBox() {
 
     const userMsg = { type: "user", text: input };
 
-    setMessages(prev => [...prev, userMsg]);
+    setMessages((prev) => [...prev, userMsg]);
     setInput("");
     setLoading(true);
 
@@ -29,20 +30,20 @@ export default function ChatBox() {
 
       const botMsg = {
         type: "bot",
-        text: res.data.answer
+        text: cleanAnswer(res.data.answer), // ✅ CLEAN TEXT
+        sources: res.data.sources || [], // ✅ ATTACH SOURCES
       };
 
-      setMessages(prev => [...prev, botMsg]);
-
+      setMessages((prev) => [...prev, botMsg]);
     } catch (err) {
       console.error(err);
 
       const errorMsg = {
         type: "bot",
-        text: "Sorry, I encountered an error. Please try again."
+        text: "Sorry, I encountered an error. Please try again.",
       };
 
-      setMessages(prev => [...prev, errorMsg]);
+      setMessages((prev) => [...prev, errorMsg]);
     } finally {
       setLoading(false);
     }
@@ -57,10 +58,8 @@ export default function ChatBox() {
 
   return (
     <div className="flex flex-col flex-1 h-full bg-gray-50">
-      
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-4 py-6 space-y-4">
-        
         {messages.length === 0 && (
           <div className="text-center text-gray-400 mt-20">
             <p className="text-lg">💬 Ask me anything about your documents</p>
@@ -92,7 +91,6 @@ export default function ChatBox() {
       {/* Input */}
       <div className="border-t border-gray-200 bg-white p-4">
         <div className="flex gap-2 max-w-4xl mx-auto">
-          
           <input
             type="text"
             className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -108,15 +106,15 @@ export default function ChatBox() {
             disabled={!input.trim() || loading}
             className={`
               px-6 py-2 rounded-lg font-medium transition
-              ${!input.trim() || loading
-                ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                : "bg-blue-600 text-white hover:bg-blue-700 active:scale-95"
+              ${
+                !input.trim() || loading
+                  ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                  : "bg-blue-600 text-white hover:bg-blue-700 active:scale-95"
               }
             `}
           >
             {loading ? "Sending..." : "Send"}
           </button>
-
         </div>
       </div>
     </div>
