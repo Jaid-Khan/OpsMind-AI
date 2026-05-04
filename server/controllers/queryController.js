@@ -35,9 +35,7 @@ exports.queryDocs = async (req, res) => {
     ]);
 
     // 3️⃣ Filter top results
-    const filtered = results
-      .sort((a, b) => b.score - a.score)
-      .slice(0, 5);
+    const filtered = results.sort((a, b) => b.score - a.score).slice(0, 5);
 
     let context = "";
     let sources = [];
@@ -62,12 +60,10 @@ File: ${doc.fileName}
 Page: ${doc.pageNumber}
 
 ${doc.chunkText}
-`
+`,
         )
         .join("\n\n");
-
     } else {
-
       sources = filtered.map((doc) => ({
         fileName: doc.fileName,
         pageNumber: doc.pageNumber,
@@ -83,21 +79,22 @@ Page: ${doc.pageNumber}
 Content:
 ${doc.chunkText}
 -------------------
-`
+`,
         )
         .join("\n\n");
     }
 
     // 🧠 NEW: FORMAT CHAT HISTORY
-    const formattedHistory = history
-      .slice(-5) // last 5 messages only
-      .map(msg => {
-        if (msg.type === "user") {
-          return `User: ${msg.text}`;
-        } else {
-          return `Assistant: ${msg.text}`;
-        }
+    const formattedHistory = (history || [])
+      .slice(-5)
+      .map((msg) => {
+        if (!msg || !msg.text) return "";
+
+        return msg.type === "user"
+          ? `User: ${msg.text}`
+          : `Assistant: ${msg.text}`;
       })
+      .filter(Boolean)
       .join("\n");
 
     // 🧠 FINAL CONTEXT WITH MEMORY
@@ -123,7 +120,6 @@ ${context}
     }
 
     return res.json({ answer, sources });
-
   } catch (error) {
     console.error(error);
     return res.status(500).json({ error: "Query failed" });
