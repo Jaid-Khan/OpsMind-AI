@@ -4,7 +4,7 @@ const { generateAnswer } = require("../services/grokService");
 
 exports.queryDocs = async (req, res) => {
   try {
-    const { query } = req.body;
+    const { query, history = [] } = req.body;
 
     if (!query) {
       return res.status(400).json({ error: "Query is required" });
@@ -17,34 +17,24 @@ exports.queryDocs = async (req, res) => {
     const queryEmbedding = await generateEmbedding(improvedQuery);
 
     // 2️⃣ Vector search
-const results = await Document.aggregate([
-  {
-    $vectorSearch: {
-      index: "vector_index", // ✅ FIXED
-      path: "embedding",
-      queryVector: queryEmbedding,
-      numCandidates: 200,
-      limit: 10,
-    },
-  },
-  {
-    $addFields: {
-      score: { $meta: "vectorSearchScore" },
-    },
-  },
-]);
+    const results = await Document.aggregate([
+      {
+        $vectorSearch: {
+          index: "vector_index",
+          path: "embedding",
+          queryVector: queryEmbedding,
+          numCandidates: 200,
+          limit: 10,
+        },
+      },
+      {
+        $addFields: {
+          score: { $meta: "vectorSearchScore" },
+        },
+      },
+    ]);
 
-    // 🔥 DEBUG (optional - remove later)
-    console.log("VECTOR SCORES:");
-    results.slice(0, 5).forEach(r => {
-      console.log({
-        score: r.score,
-        fileName: r.fileName,
-        pageNumber: r.pageNumber
-      });
-    });
-
-    // 3️⃣ PROPER RAG RETRIEVAL (FIXED)
+    // 3️⃣ Filter top results
     const filtered = results
       .sort((a, b) => b.score - a.score)
       .slice(0, 5);
@@ -52,10 +42,7 @@ const results = await Document.aggregate([
     let context = "";
     let sources = [];
 
-    // 4️⃣ Check if no results
     if (!filtered.length) {
-      console.log("⚠️ No results found, using fallback...");
-
       const fallbackDocs = await Document.find().limit(3);
 
       if (!fallbackDocs.length) {
@@ -101,18 +88,40 @@ ${doc.chunkText}
         .join("\n\n");
     }
 
+    // 🧠 NEW: FORMAT CHAT HISTORY
+    const formattedHistory = history
+      .slice(-5) // last 5 messages only
+      .map(msg => {
+        if (msg.type === "user") {
+          return `User: ${msg.text}`;
+        } else {
+          return `Assistant: ${msg.text}`;
+        }
+      })
+      .join("\n");
+
+    // 🧠 FINAL CONTEXT WITH MEMORY
+    const finalContext = `
+CHAT HISTORY:
+${formattedHistory}
+
+---------------------
+
+DOCUMENT CONTEXT:
+${context}
+`;
+
     // 5️⃣ Generate answer
     let answer;
 
     try {
-      answer = await generateAnswer(context, query);
+      answer = await generateAnswer(finalContext, query);
     } catch (err) {
       console.log("⚠️ LLM failed, using simpleAnswer...");
       const { simpleAnswer } = require("../services/simpleAnswerService");
-      answer = simpleAnswer(context, query);
+      answer = simpleAnswer(finalContext, query);
     }
 
-    // ✅ FINAL RESPONSE
     return res.json({ answer, sources });
 
   } catch (error) {
