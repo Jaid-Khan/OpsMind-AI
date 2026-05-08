@@ -46,7 +46,7 @@ export default function AdminPage() {
         <UploadBox />
         
         {/* Stats Cards */}
-        <div className="mt-8 grid grid-cols-1 sm:grid-cols-3 gap-4">
+        {/* <div className="mt-8 grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="bg-white rounded-xl p-5 shadow-sm border border-indigo-100">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center">
@@ -88,7 +88,7 @@ export default function AdminPage() {
               </div>
             </div>
           </div>
-        </div>
+        </div> */}
 
         {/* Info Card */}
         <div className="mt-8 p-5 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl border border-indigo-100">

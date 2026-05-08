@@ -11,6 +11,9 @@ export default function ChatBox() {
 
   const bottomRef = useRef(null);
 
+  
+
+
   // ✅ Auto-scroll to latest message
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -26,8 +29,10 @@ export default function ChatBox() {
     setLoading(true);
 
     try {
-      const res = await queryDocs(input);
-
+      const res = await queryDocs({
+        query: input,
+        history: messages.slice(-5), // ✅ limit last 5 messages
+      });
       const botMsg = {
         type: "bot",
         text: cleanAnswer(res.data.answer), // ✅ CLEAN TEXT

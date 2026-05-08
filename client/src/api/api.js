@@ -40,11 +40,10 @@ export const uploadPDF = (file) => {
   });
 };
 
-// ✅ Query Docs (Chat)
-export const queryDocs = (query) => {
-  return API.post("/query", { query });
+// ✅ Query Docs (Chat with history)
+export const queryDocs = (data) => {
+  return API.post("/query", data);
 };
-
 // ✅ Get all documents
 export const getDocuments = () => {
   return API.get("/admin/docs");
