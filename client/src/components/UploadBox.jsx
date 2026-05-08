@@ -33,8 +33,12 @@ export default function UploadBox({ onUploadSuccess }) {
 
   // ✅ Initial fetch
   useEffect(() => {
-    fetchDocuments();
-  }, []);
+  const loadDocs = async () => {
+    await fetchDocuments();
+  };
+
+  loadDocs();
+}, []);
 
   // ✅ File select
   const handleFileChange = (e) => {
