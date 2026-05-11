@@ -54,4 +54,15 @@ export const deleteDocument = (fileName) => {
   return API.delete(`/admin/docs/${fileName}`);
 };
 
+// ✅ GET CHAT
+export const getChat = (sessionId) => {
+  return API.get(`/chat/${sessionId}`);
+};
+
+
+// ✅ SAVE MESSAGE
+export const saveMessage = (data) => {
+  return API.post("/chat/save", data);
+};
+
 export default API;

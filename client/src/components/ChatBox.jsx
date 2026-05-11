@@ -1,39 +1,115 @@
-import { useState, useRef, useEffect } from "react";
+import {
+  useState,
+  useRef,
+  useEffect,
+} from "react";
+
 import Message from "./Message";
+
+import {
+  getChat,
+  saveMessage,
+} from "../api/api";
+
 import { cleanAnswer } from "../utils/cleanAnswer";
 
 export default function ChatBox() {
-  const [messages, setMessages] = useState([]);
-  const [input, setInput] = useState("");
-  const [loading, setLoading] = useState(false);
+
+  const [messages, setMessages] =
+    useState([]);
+
+  const [input, setInput] =
+    useState("");
+
+  const [loading, setLoading] =
+    useState(false);
 
   const bottomRef = useRef(null);
 
-  // ✅ Auto-scroll
+  // ✅ SESSION ID
+  const [sessionId] = useState(() => {
+
+    let existing =
+      localStorage.getItem(
+        "opsmind_session"
+      );
+
+    if (existing) return existing;
+
+    const newId =
+      crypto.randomUUID();
+
+    localStorage.setItem(
+      "opsmind_session",
+      newId
+    );
+
+    return newId;
+  });
+
+  // ✅ LOAD OLD CHAT
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({
-      behavior: "smooth",
-    });
-  }, [messages]);
 
-  const handleSend = async () => {
-    if (!input.trim() || loading) return;
+    const loadChat = async () => {
+      try {
 
-    const userMsg = {
-      type: "user",
-      text: input,
+        const res =
+          await getChat(sessionId);
+
+        if (
+          res.data?.messages
+        ) {
+          setMessages(
+            res.data.messages
+          );
+        }
+
+      } catch (error) {
+        console.error(
+          "Load chat error:",
+          error
+        );
+      }
     };
 
-    // 🔥 EMPTY BOT MESSAGE
+    loadChat();
+
+  }, [sessionId]);
+
+  // ✅ AUTO SCROLL
+  useEffect(() => {
+
+    bottomRef.current
+      ?.scrollIntoView({
+        behavior: "smooth",
+      });
+
+  }, [messages]);
+
+  // ✅ SEND MESSAGE
+  const handleSend = async () => {
+
+    if (
+      !input.trim() ||
+      loading
+    ) return;
+
+    const currentInput = input;
+
+    // ✅ USER MESSAGE
+    const userMsg = {
+      type: "user",
+      text: currentInput,
+    };
+
+    // ✅ EMPTY BOT MESSAGE
     const botMsg = {
       type: "bot",
       text: "",
       sources: [],
     };
 
-    // 🔥 STORE CURRENT INPUT
-    const currentInput = input;
-
+    // ✅ UPDATE UI
     setMessages((prev) => [
       ...prev,
       userMsg,
@@ -43,34 +119,59 @@ export default function ChatBox() {
     setInput("");
     setLoading(true);
 
+    // ✅ SAVE USER MSG
     try {
-      const response = await fetch(
-        "http://localhost:5000/api/query/stream",
-        {
-          method: "POST",
 
-          headers: {
-            "Content-Type":
-              "application/json",
-          },
+      await saveMessage({
+        sessionId,
+        message: userMsg,
+      });
 
-          body: JSON.stringify({
-            query: currentInput,
-            history: messages.slice(-5),
-          }),
-        }
+    } catch (error) {
+      console.error(
+        "Save user message failed:",
+        error
       );
+    }
+
+    try {
+
+      const response =
+        await fetch(
+          "http://localhost:5000/api/query/stream",
+          {
+            method: "POST",
+
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+
+            body: JSON.stringify({
+              query: currentInput,
+
+              history:
+                messages.slice(-5),
+            }),
+          }
+        );
 
       const reader =
         response.body.getReader();
 
-      const decoder = new TextDecoder();
+      const decoder =
+        new TextDecoder();
 
       let fullText = "";
 
+      let finalSources = [];
+
       while (true) {
-        const { done, value } =
-          await reader.read();
+
+        const {
+          done,
+          value,
+        } = await reader.read();
 
         if (done) break;
 
@@ -84,20 +185,29 @@ export default function ChatBox() {
           );
 
         for (const line of lines) {
+
           const jsonStr =
-            line.replace("data: ", "");
+            line.replace(
+              "data: ",
+              ""
+            );
 
           if (!jsonStr) continue;
 
           const parsed =
             JSON.parse(jsonStr);
 
-          // 🔥 STREAM TOKEN
+          // ✅ STREAM TOKENS
           if (parsed.token) {
-            fullText += parsed.token;
+
+            fullText +=
+              parsed.token;
 
             setMessages((prev) => {
-              const updated = [...prev];
+
+              const updated = [
+                ...prev,
+              ];
 
               updated[
                 updated.length - 1
@@ -115,10 +225,17 @@ export default function ChatBox() {
             });
           }
 
-          // 🔥 FINAL SOURCES
+          // ✅ FINAL SOURCES
           if (parsed.done) {
+
+            finalSources =
+              parsed.sources || [];
+
             setMessages((prev) => {
-              const updated = [...prev];
+
+              const updated = [
+                ...prev,
+              ];
 
               updated[
                 updated.length - 1
@@ -128,7 +245,7 @@ export default function ChatBox() {
                 ],
 
                 sources:
-                  parsed.sources || [],
+                  finalSources,
               };
 
               return updated;
@@ -137,39 +254,66 @@ export default function ChatBox() {
         }
       }
 
+      // ✅ SAVE BOT MESSAGE
+      await saveMessage({
+        sessionId,
+
+        message: {
+          type: "bot",
+
+          text: cleanAnswer(
+            fullText
+          ),
+
+          sources:
+            finalSources,
+        },
+      });
+
     } catch (error) {
+
       console.error(error);
 
       setMessages((prev) => [
         ...prev,
+
         {
           type: "bot",
-          text: "Streaming failed.",
+          text:
+            "Streaming failed.",
         },
       ]);
 
     } finally {
+
       setLoading(false);
     }
   };
 
-  const handleKeyDown = (e) => {
+  // ✅ ENTER KEY
+  const handleKeyDown = (
+    e
+  ) => {
+
     if (
       e.key === "Enter" &&
       !loading
     ) {
       e.preventDefault();
+
       handleSend();
     }
   };
 
   return (
     <div className="flex flex-col flex-1 h-full bg-gray-50">
-      {/* Messages */}
+
+      {/* MESSAGES */}
       <div className="flex-1 overflow-y-auto px-4 py-6 space-y-4">
 
         {messages.length === 0 && (
           <div className="text-center text-gray-400 mt-20">
+
             <p className="text-lg">
               💬 Ask me anything about your documents
             </p>
@@ -177,31 +321,56 @@ export default function ChatBox() {
             <p className="text-sm mt-2">
               Start a conversation below
             </p>
+
           </div>
         )}
 
         {messages.map((msg, i) => (
-          <Message key={i} msg={msg} />
+          <Message
+            key={i}
+            msg={msg}
+          />
         ))}
 
         <div ref={bottomRef} />
+
       </div>
 
-      {/* Input */}
+      {/* INPUT */}
       <div className="border-t border-gray-200 bg-white p-4">
+
         <div className="flex gap-2 max-w-4xl mx-auto">
 
           <input
             type="text"
-            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+
+            className="
+              flex-1
+              px-4
+              py-2
+              border
+              border-gray-300
+              rounded-lg
+              focus:outline-none
+              focus:ring-2
+              focus:ring-blue-500
+            "
+
             value={input}
+
             onChange={(e) =>
-              setInput(e.target.value)
+              setInput(
+                e.target.value
+              )
             }
 
-            onKeyDown={handleKeyDown}
+            onKeyDown={
+              handleKeyDown
+            }
 
-            placeholder="Ask about your documents..."
+            placeholder="
+              Ask about your documents...
+            "
 
             disabled={loading}
           />
@@ -210,11 +379,17 @@ export default function ChatBox() {
             onClick={handleSend}
 
             disabled={
-              !input.trim() || loading
+              !input.trim() ||
+              loading
             }
 
             className={`
-              px-6 py-2 rounded-lg font-medium transition
+              px-6
+              py-2
+              rounded-lg
+              font-medium
+              transition
+
               ${
                 !input.trim() ||
                 loading
@@ -223,9 +398,11 @@ export default function ChatBox() {
               }
             `}
           >
+
             {loading
               ? "Thinking..."
               : "Send"}
+
           </button>
 
         </div>

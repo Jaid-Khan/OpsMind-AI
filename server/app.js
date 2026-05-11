@@ -6,6 +6,7 @@ const cors = require("cors");
 const uploadRoutes = require("./routes/uploadRoutes");
 const queryRoutes = require("./routes/queryRoutes");
 const adminRoutes = require("./routes/adminRoutes");
+const chatRoutes = require("./routes/chatRoutes");
 
 app.use(cors({
   origin: "*",
@@ -20,6 +21,7 @@ app.get("/", (req, res) => {
 app.use("/api/query", queryRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/upload", uploadRoutes); 
+app.use("/api/chat", chatRoutes);
 
 // ✅ ALWAYS LAST
 app.use((err, req, res, next) => {
