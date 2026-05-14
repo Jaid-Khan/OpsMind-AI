@@ -23,7 +23,6 @@ app.use("/api/admin", adminRoutes);
 app.use("/api/upload", uploadRoutes); 
 app.use("/api/chat", chatRoutes);
 
-// ✅ ALWAYS LAST
 app.use((err, req, res, next) => {
   if (err instanceof require("multer").MulterError) {
     return res.status(400).json({ error: err.message });

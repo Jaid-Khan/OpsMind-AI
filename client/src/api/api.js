@@ -65,4 +65,20 @@ export const saveMessage = (data) => {
   return API.post("/chat/save", data);
 };
 
+// ✅ GET SOURCE PREVIEW
+export const getSourcePreview = (
+  fileName,
+  pageNumber
+) => {
+  return API.get(
+    `/query/source-preview`,
+    {
+      params: {
+        fileName,
+        pageNumber,
+      },
+    }
+  );
+};
+
 export default API;

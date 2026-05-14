@@ -10,6 +10,51 @@ const {
 } = require("../services/grokService");
 
 // ======================================================
+// GET SOURCE PREVIEW
+// ======================================================
+
+exports.getSourcePreview = async (req, res) => {
+  try {
+
+    const {
+      fileName,
+      pageNumber,
+    } = req.query;
+
+    if (!fileName || !pageNumber) {
+      return res.status(400).json({
+        error: "Missing source params",
+      });
+    }
+
+    const doc = await Document.findOne({
+      fileName,
+      pageNumber,
+    });
+
+    if (!doc) {
+      return res.status(404).json({
+        error: "Source not found",
+      });
+    }
+
+    return res.json({
+      fileName: doc.fileName,
+      pageNumber: doc.pageNumber,
+      chunkText: doc.chunkText,
+    });
+
+  } catch (error) {
+
+    console.error(error);
+
+    return res.status(500).json({
+      error: "Failed to load source",
+    });
+  }
+};
+
+// ======================================================
 // NORMAL RESPONSE
 // ======================================================
 
@@ -23,31 +68,34 @@ exports.queryDocs = async (req, res) => {
       });
     }
 
-    // ✅ Generate embedding
-    const queryEmbedding = await generateEmbedding(query);
+    const queryEmbedding =
+      await generateEmbedding(query);
 
-    // ✅ Vector search
-    const results = await Document.aggregate([
-      {
-        $vectorSearch: {
-          index: "vector_index",
-          path: "embedding",
-          queryVector: queryEmbedding,
-          numCandidates: 200,
-          limit: 5,
+    const results =
+      await Document.aggregate([
+        {
+          $vectorSearch: {
+            index: "vector_index",
+            path: "embedding",
+            queryVector: queryEmbedding,
+            numCandidates: 200,
+            limit: 5,
+          },
         },
-      },
-      {
-        $addFields: {
-          score: { $meta: "vectorSearchScore" },
+        {
+          $addFields: {
+            score: {
+              $meta:
+                "vectorSearchScore",
+            },
+          },
         },
-      },
-    ]);
+      ]);
 
-    // ✅ Hallucination filter
-    const filtered = results.filter(
-      (doc) => doc.score > 0.72
-    );
+    const filtered =
+      results.filter(
+        (doc) => doc.score > 0.72
+      );
 
     if (!filtered.length) {
       return res.json({
@@ -57,13 +105,14 @@ exports.queryDocs = async (req, res) => {
       });
     }
 
-    // ✅ Sources
-    const sources = filtered.map((doc) => ({
-      fileName: doc.fileName,
-      pageNumber: doc.pageNumber,
-    }));
+    const sources = filtered.map(
+      (doc) => ({
+        fileName: doc.fileName,
+        pageNumber:
+          doc.pageNumber,
+      })
+    );
 
-    // ✅ Context
     const context = filtered
       .map(
         (doc, i) => `
@@ -76,15 +125,15 @@ ${doc.chunkText}
       )
       .join("\n\n");
 
-    // ✅ Chat history
-    const formattedHistory = history
-      .slice(-5)
-      .map((msg) =>
-        msg.type === "user"
-          ? `User: ${msg.text}`
-          : `Assistant: ${msg.text}`
-      )
-      .join("\n");
+    const formattedHistory =
+      history
+        .slice(-5)
+        .map((msg) =>
+          msg.type === "user"
+            ? `User: ${msg.text}`
+            : `Assistant: ${msg.text}`
+        )
+        .join("\n");
 
     const finalContext = `
 CHAT HISTORY:
@@ -94,11 +143,11 @@ DOCUMENT CONTEXT:
 ${context}
 `;
 
-    // ✅ Generate final answer
-    const answer = await generateAnswer(
-      finalContext,
-      query
-    );
+    const answer =
+      await generateAnswer(
+        finalContext,
+        query
+      );
 
     return res.json({
       answer,
@@ -106,6 +155,7 @@ ${context}
     });
 
   } catch (error) {
+
     console.error(error);
 
     return res.status(500).json({
@@ -118,108 +168,115 @@ ${context}
 // STREAMING RESPONSE (SSE)
 // ======================================================
 
-exports.queryDocsStream = async (req, res) => {
-  try {
-    const { query, history = [] } = req.body;
+exports.queryDocsStream =
+  async (req, res) => {
+    try {
 
-    if (!query) {
-      return res.status(400).json({
-        error: "Query is required",
-      });
-    }
+      const {
+        query,
+        history = [],
+      } = req.body;
 
-    // ✅ SSE HEADERS
-    res.setHeader(
-      "Content-Type",
-      "text/event-stream"
-    );
+      if (!query) {
+        return res.status(400).json({
+          error:
+            "Query is required",
+        });
+      }
 
-    res.setHeader(
-      "Cache-Control",
-      "no-cache"
-    );
-
-    res.setHeader(
-      "Connection",
-      "keep-alive"
-    );
-
-    // ✅ Generate embedding
-    const queryEmbedding = await generateEmbedding(
-      query
-    );
-
-    // ✅ Vector search
-    const results = await Document.aggregate([
-      {
-        $vectorSearch: {
-          index: "vector_index",
-          path: "embedding",
-          queryVector: queryEmbedding,
-          numCandidates: 200,
-          limit: 5,
-        },
-      },
-      {
-        $addFields: {
-          score: { $meta: "vectorSearchScore" },
-        },
-      },
-    ]);
-
-    // ✅ Hallucination protection
-    const filtered = results.filter(
-      (doc) => doc.score > 0.55
-    );
-
-    if (!filtered.length) {
-      res.write(
-        `data: ${JSON.stringify({
-          token:
-            "I don't know based on the provided documents.",
-        })}\n\n`
+      res.setHeader(
+        "Content-Type",
+        "text/event-stream"
       );
 
-      return res.end();
-    }
+      res.setHeader(
+        "Cache-Control",
+        "no-cache"
+      );
 
-    // ✅ Sources
-    const sources = filtered.map((doc) => ({
-      fileName: doc.fileName,
-      pageNumber: doc.pageNumber,
-    }));
+      res.setHeader(
+        "Connection",
+        "keep-alive"
+      );
 
-    // ✅ Send sources
-    res.write(
-      `data: ${JSON.stringify({
-        sources,
-      })}\n\n`
-    );
+      const queryEmbedding =
+        await generateEmbedding(
+          query
+        );
 
-    // ✅ Context
-    const context = filtered
-      .map(
-        (doc, i) => `
+      const results =
+        await Document.aggregate([
+          {
+            $vectorSearch: {
+              index:
+                "vector_index",
+              path: "embedding",
+              queryVector:
+                queryEmbedding,
+              numCandidates: 200,
+              limit: 5,
+            },
+          },
+          {
+            $addFields: {
+              score: {
+                $meta:
+                  "vectorSearchScore",
+              },
+            },
+          },
+        ]);
+
+      const filtered =
+        results.filter(
+          (doc) =>
+            doc.score > 0.55
+        );
+
+      if (!filtered.length) {
+
+        res.write(
+          `data: ${JSON.stringify({
+            token:
+              "I don't know based on the provided documents.",
+          })}\n\n`
+        );
+
+        return res.end();
+      }
+
+      const sources =
+        filtered.map((doc) => ({
+          fileName:
+            doc.fileName,
+          pageNumber:
+            doc.pageNumber,
+        }));
+
+      const context = filtered
+        .map(
+          (doc, i) => `
 SOURCE ${i + 1}
 File: ${doc.fileName}
 Page: ${doc.pageNumber}
 
 ${doc.chunkText}
 `
-      )
-      .join("\n\n");
+        )
+        .join("\n\n");
 
-    // ✅ Chat history
-    const formattedHistory = history
-      .slice(-5)
-      .map((msg) =>
-        msg.type === "user"
-          ? `User: ${msg.text}`
-          : `Assistant: ${msg.text}`
-      )
-      .join("\n");
+      const formattedHistory =
+        history
+          .slice(-5)
+          .map((msg) =>
+            msg.type ===
+            "user"
+              ? `User: ${msg.text}`
+              : `Assistant: ${msg.text}`
+          )
+          .join("\n");
 
-    const finalContext = `
+      const finalContext = `
 CHAT HISTORY:
 ${formattedHistory}
 
@@ -227,40 +284,44 @@ DOCUMENT CONTEXT:
 ${context}
 `;
 
-    // ✅ Stream answer
-    await generateAnswerStream(
-      finalContext,
-      query,
-      {
-        write: (token) => {
-          res.write(
-            `data: ${JSON.stringify({
-              token,
-            })}\n\n`
-          );
-        },
+      await generateAnswerStream(
+        finalContext,
+        query,
+        {
+          write: (token) => {
 
-        end: () => {
-          res.write(
-            `data: ${JSON.stringify({
-              done: true,
-            })}\n\n`
-          );
+            res.write(
+              `data: ${JSON.stringify({
+                token,
+              })}\n\n`
+            );
+          },
 
-          res.end();
-        },
-      }
-    );
+          end: () => {
 
-  } catch (error) {
-    console.error(error);
+            res.write(
+              `data: ${JSON.stringify({
+                done: true,
+                sources,
+              })}\n\n`
+            );
 
-    res.write(
-      `data: ${JSON.stringify({
-        error: "Streaming failed",
-      })}\n\n`
-    );
+            res.end();
+          },
+        }
+      );
 
-    res.end();
-  }
-};
+    } catch (error) {
+
+      console.error(error);
+
+      res.write(
+        `data: ${JSON.stringify({
+          error:
+            "Streaming failed",
+        })}\n\n`
+      );
+
+      res.end();
+    }
+  };

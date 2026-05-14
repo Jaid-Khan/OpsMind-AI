@@ -5,12 +5,16 @@ const router = express.Router();
 const {
   queryDocs,
   queryDocsStream,
+  getSourcePreview,
 } = require("../controllers/queryController");
 
-// ✅ Normal API
+// ✅ Normal query
 router.post("/", queryDocs);
 
-// ✅ Streaming API
+// ✅ Streaming query
 router.post("/stream", queryDocsStream);
+
+// ✅ Source preview
+router.get("/source-preview", getSourcePreview);
 
 module.exports = router;
