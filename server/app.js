@@ -7,20 +7,24 @@ const uploadRoutes = require("./routes/uploadRoutes");
 const queryRoutes = require("./routes/queryRoutes");
 const adminRoutes = require("./routes/adminRoutes");
 const chatRoutes = require("./routes/chatRoutes");
+const authRoutes = require("./routes/authRoutes");
 
-app.use(cors({
-  origin: "*",
-  methods: ["GET", "POST"],
-}));
+app.use(
+  cors({
+    origin: "*",
+    methods: ["GET", "POST"],
+  }),
+);
 app.use(express.json());
 
 app.get("/", (req, res) => {
   res.send("OpsMind AI Backend Running");
 });
 
+app.use("/api/auth", authRoutes);
 app.use("/api/query", queryRoutes);
 app.use("/api/admin", adminRoutes);
-app.use("/api/upload", uploadRoutes); 
+app.use("/api/upload", uploadRoutes);
 app.use("/api/chat", chatRoutes);
 
 app.use((err, req, res, next) => {
