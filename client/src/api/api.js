@@ -1,77 +1,173 @@
-// src/api/api.js
 import axios from "axios";
 
-const API_BASE_URL = "http://localhost:5000/api";
+const API_BASE_URL =
+  "http://localhost:5000/api";
 
 const API = axios.create({
   baseURL: API_BASE_URL,
+
   headers: {
-    "Content-Type": "application/json",
+    "Content-Type":
+      "application/json",
   },
 });
 
-// 🔥 Request interceptor
+// ========================================
+// AUTO ATTACH JWT TOKEN
+// ========================================
+
 API.interceptors.request.use(
   (config) => {
-    console.log(`Making ${config.method.toUpperCase()} request to ${config.url}`);
+
+    const token =
+      localStorage.getItem(
+        "opsmind_token"
+      );
+
+    if (token) {
+      config.headers.Authorization =
+        `Bearer ${token}`;
+    }
+
     return config;
   },
-  (error) => Promise.reject(error)
+
+  (error) =>
+    Promise.reject(error)
 );
 
-// 🔥 Response interceptor
+// ========================================
+// RESPONSE INTERCEPTOR
+// ========================================
+
 API.interceptors.response.use(
   (response) => response,
+
   (error) => {
-    console.error("API Error:", error.response?.data || error.message);
+
+    console.error(
+      "API Error:",
+      error.response?.data ||
+        error.message
+    );
+
     return Promise.reject(error);
   }
 );
 
-// ✅ Upload PDF
-export const uploadPDF = (file) => {
-  const formData = new FormData();
-  formData.append("file", file);
+// ========================================
+// AUTH APIs
+// ========================================
 
-  return API.post("/upload/upload", formData, {
-    headers: {
-      "Content-Type": "multipart/form-data",
-    },
-  });
+export const registerUser = (
+  data
+) => {
+  return API.post(
+    "/auth/register",
+    data
+  );
 };
 
-// ✅ Query Docs (Chat with history)
-export const queryDocs = (data) => {
-  return API.post("/query", data);
-};
-// ✅ Get all documents
-export const getDocuments = () => {
-  return API.get("/admin/docs");
-};
-
-// ✅ Delete document (by fileName)
-export const deleteDocument = (fileName) => {
-  return API.delete(`/admin/docs/${fileName}`);
+export const loginUser = (
+  data
+) => {
+  return API.post(
+    "/auth/login",
+    data
+  );
 };
 
-// ✅ GET CHAT
-export const getChat = (sessionId) => {
-  return API.get(`/chat/${sessionId}`);
+// ========================================
+// PDF APIs
+// ========================================
+
+export const uploadPDF = (
+  file
+) => {
+
+  const formData =
+    new FormData();
+
+  formData.append(
+    "file",
+    file
+  );
+
+  return API.post(
+    "/upload/upload",
+    formData,
+    {
+      headers: {
+        "Content-Type":
+          "multipart/form-data",
+      },
+    }
+  );
 };
 
+// ========================================
+// QUERY APIs
+// ========================================
 
-// ✅ SAVE MESSAGE
-export const saveMessage = (data) => {
-  return API.post("/chat/save", data);
+export const queryDocs = (
+  data
+) => {
+  return API.post(
+    "/query",
+    data
+  );
 };
 
-// ✅ GET SOURCE PREVIEW
+// ========================================
+// ADMIN APIs
+// ========================================
+
+export const getDocuments =
+  () => {
+    return API.get(
+      "/admin/docs"
+    );
+  };
+
+export const deleteDocument =
+  (fileName) => {
+    return API.delete(
+      `/admin/docs/${fileName}`
+    );
+  };
+
+// ========================================
+// CHAT APIs
+// ========================================
+
+export const getChat = (
+  sessionId
+) => {
+  return API.get(
+    `/chat/${sessionId}`
+  );
+};
+
+export const saveMessage = (
+  data
+) => {
+  return API.post(
+    "/chat/save",
+    data
+  );
+};
+
+// ========================================
+// SOURCE PREVIEW
+// ========================================
+
 export const getSourcePreview = (
   fileName,
   pageNumber
 ) => {
+
   return API.get(
-    `/query/source-preview`,
+    "/query/source-preview",
     {
       params: {
         fileName,

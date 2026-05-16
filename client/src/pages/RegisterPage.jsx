@@ -8,23 +8,17 @@ import {
 } from "react-router-dom";
 
 import {
-  loginUser,
+  registerUser,
 } from "../api/api";
 
-import {
-  useAuth,
-} from "../context/AuthContext";
-
-export default function LoginPage() {
+export default function RegisterPage() {
 
   const navigate =
     useNavigate();
 
-  const { login } =
-    useAuth();
-
   const [form, setForm] =
     useState({
+      name: "",
       email: "",
       password: "",
     });
@@ -55,22 +49,18 @@ export default function LoginPage() {
 
       try {
 
-        const res =
-          await loginUser(form);
-
-        login(
-          res.data.token,
-          res.data.user
+        await registerUser(
+          form
         );
 
-        navigate("/admin");
+        navigate("/login");
 
       } catch (error) {
 
         setError(
           error.response?.data
             ?.error ||
-            "Login failed"
+            "Register failed"
         );
 
       } finally {
@@ -80,7 +70,7 @@ export default function LoginPage() {
     };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-100 to-blue-100 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-100 to-indigo-100 p-4">
 
       <div className="bg-white shadow-xl rounded-2xl p-8 w-full max-w-md">
 
@@ -89,7 +79,7 @@ export default function LoginPage() {
         </h1>
 
         <p className="text-center text-gray-500 mb-6">
-          Admin Login
+          Create Admin Account
         </p>
 
         {error && (
@@ -104,6 +94,18 @@ export default function LoginPage() {
           }
           className="space-y-4"
         >
+
+          <input
+            type="text"
+            name="name"
+            placeholder="Name"
+            value={form.name}
+            onChange={
+              handleChange
+            }
+            required
+            className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-indigo-500 outline-none"
+          />
 
           <input
             type="email"
@@ -135,19 +137,19 @@ export default function LoginPage() {
             className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-lg font-semibold transition"
           >
             {loading
-              ? "Logging in..."
-              : "Login"}
+              ? "Creating..."
+              : "Register"}
           </button>
         </form>
 
         <p className="text-center text-sm text-gray-500 mt-5">
-          No account?{" "}
+          Already have account?{" "}
 
           <Link
-            to="/register"
+            to="/login"
             className="text-indigo-600 font-medium"
           >
-            Register
+            Login
           </Link>
         </p>
 
