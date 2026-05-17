@@ -1,76 +1,140 @@
-const Document = require("../models/documentModel");
+const Document =
+  require("../models/documentModel");
+
 const fs = require("fs");
+
 const path = require("path");
 
-// ✅ GET ALL DOCUMENTS (CLEAN FORMAT)
-const getAllDocs = async (req, res) => {
-  try {
-    const docs = await Document.aggregate([
-      {
-        $group: {
-          _id: "$fileName",
-          totalChunks: { $sum: 1 },
-          createdAt: { $first: "$createdAt" }
-        }
-      },
-      {
-        $project: {
-          _id: 0,
-          fileName: "$_id",
-          totalChunks: 1,
-          createdAt: 1
-        }
-      },
-      { $sort: { createdAt: -1 } }
-    ]);
+// ========================================
+// GET ALL DOCS
+// ========================================
 
-    res.json({ documents: docs });
+const getAllDocs = async (
+  req,
+  res
+) => {
+  try {
+
+    const docs =
+      await Document.aggregate([
+        {
+          $group: {
+            _id: "$fileName",
+
+            totalChunks: {
+              $sum: 1,
+            },
+
+            createdAt: {
+              $first:
+                "$createdAt",
+            },
+
+            storedFileName: {
+              $first:
+                "$storedFileName",
+            },
+          },
+        },
+
+        {
+          $project: {
+            _id: 0,
+
+            fileName: "$_id",
+
+            storedFileName: 1,
+
+            totalChunks: 1,
+
+            createdAt: 1,
+          },
+        },
+
+        {
+          $sort: {
+            createdAt: -1,
+          },
+        },
+      ]);
+
+    res.json({
+      documents: docs,
+    });
 
   } catch (error) {
+
     console.error(error);
-    res.status(500).json({ error: "Failed to fetch documents" });
+
+    res.status(500).json({
+      error:
+        "Failed to fetch documents",
+    });
   }
 };
 
-// ✅ DELETE DOCUMENT (DB + FILE CLEANUP)
-const deleteDoc = async (req, res) => {
+// ========================================
+// DELETE DOC
+// ========================================
+
+const deleteDoc = async (
+  req,
+  res
+) => {
   try {
-    const { fileName } = req.params;
 
-    // 🔥 Delete from DB
-    const result = await Document.deleteMany({ fileName });
+    const { fileName } =
+      req.params;
 
-    if (result.deletedCount === 0) {
-      return res.status(404).json({ error: "Document not found" });
-    }
+    // Find one document first
+    const doc =
+      await Document.findOne({
+        fileName,
+      });
 
-    // 🔥 Delete from uploads folder
-    const uploadsPath = path.join(__dirname, "../uploads");
-
-    if (fs.existsSync(uploadsPath)) {
-      const files = fs.readdirSync(uploadsPath);
-
-      files.forEach(file => {
-        // ⚠️ Safe fallback (since filenames are hashed)
-        if (file.endsWith(".pdf")) {
-          try {
-            fs.unlinkSync(path.join(uploadsPath, file));
-          } catch (err) {
-            console.log("File delete error:", err.message);
-          }
-        }
+    if (!doc) {
+      return res.status(404).json({
+        error:
+          "Document not found",
       });
     }
 
-    res.json({ message: "Document deleted successfully" });
+    // Delete all chunks
+    await Document.deleteMany({
+      fileName,
+    });
+
+    // Delete actual PDF file
+    const filePath =
+      path.join(
+        __dirname,
+        "../uploads",
+        doc.storedFileName
+      );
+
+    if (
+      fs.existsSync(filePath)
+    ) {
+      fs.unlinkSync(filePath);
+    }
+
+    res.json({
+      message:
+        "Document deleted successfully",
+    });
 
   } catch (error) {
+
     console.error(error);
-    res.status(500).json({ error: "Delete failed" });
+
+    res.status(500).json({
+      error:
+        "Delete failed",
+    });
   }
 };
 
 module.exports = {
   getAllDocs,
-  deleteDoc
+  deleteDoc,
 };

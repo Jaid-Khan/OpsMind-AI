@@ -1,36 +1,48 @@
 const mongoose = require("mongoose");
 
-const documentSchema = new mongoose.Schema({
-  fileName: {
-    type: String,
-    required: true,
-    index: true
-  },
-  chunkText: {
-    type: String,
-    required: true,
-  },
+const documentSchema =
+  new mongoose.Schema({
+    // Original file name
+    fileName: {
+      type: String,
+      required: true,
+      index: true,
+    },
 
-  // 🔥 Vector field
-  embedding: {
-    type: [Number],
-    required: true,
-  },
+    // Actual uploaded file
+    storedFileName: {
+      type: String,
+      required: true,
+    },
 
-  // ✅ NEW FIELDS
-  chunkIndex: {
-    type: Number,
-    required: true
-  },
-  pageNumber: {
-    type: Number,
-    required: true
-  },
+    chunkText: {
+      type: String,
+      required: true,
+    },
 
-  createdAt: {
-    type: Date,
-    default: Date.now,
-  },
-});
+    embedding: {
+      type: [Number],
+      required: true,
+    },
 
-module.exports = mongoose.model("Document", documentSchema);
+    chunkIndex: {
+      type: Number,
+      required: true,
+    },
+
+    pageNumber: {
+      type: Number,
+      required: true,
+    },
+
+    createdAt: {
+      type: Date,
+      default: Date.now,
+    },
+  });
+
+module.exports =
+  mongoose.model(
+    "Document",
+    documentSchema
+  );
